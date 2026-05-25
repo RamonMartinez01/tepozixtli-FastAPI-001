@@ -1,0 +1,44 @@
+# ==========================================
+# .gitignore - Dashboard Agroespacial Copernicus
+# ==========================================
+
+# 1. Secretos y Configuración Local (¡CRÍTICO!)
+.env
+.env.*
+!.env.example
+
+# 2. Entornos Virtuales
+venv/
+env/
+.venv/
+
+# 3. Archivos Compilados de Python
+**/__pycache__/
+*.py[cod]
+*$py.class
+alembic/__pycache__/
+
+# 4. Bases de Datos Locales
+*.sqlite3
+*.db
+
+# 5. Entornos de Desarrollo (IDEs)
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 6. Archivos del Sistema Operativo
+.DS_Store
+Thumbs.db
+
+# 7. Herramientas de Testing y Cobertura
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 8. Artefactos de Modelos / GIS
+*.log
+*.geojson
+*.tiff
+*.nc
