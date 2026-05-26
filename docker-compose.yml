@@ -3,7 +3,7 @@ services:
   # 1. LA BÓVEDA: Base de Datos PostgreSQL
   # ----------------------------------------------
   db:
-    image: postgres:15-alpine
+    image: postgis/postgis:15-3.4-alpine
     container_name: ojos-de-cobre_db
     restart: always
     # No exponemos los 'ports' directamente al host público para proteger la integridad.
