@@ -3,13 +3,12 @@ import json
 from uuid import UUID
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update
 from shapely.geometry import shape, mapping
 from shapely import wkb
-from geoalchemy2.shape import to_shape
 
 from app.models.region import Region
-from app.schemas.region import RegionCreate
+from app.schemas.region import RegionCreate, RegionUpdate
 
 class RegionService:
     
@@ -71,7 +70,7 @@ class RegionService:
             Region.descripcion,
             Region.metadatos,
             func.ST_AsGeoJSON(Region.geom).label("geom_json")
-        ).where(Region.id == region_id)
+        ).where(Region.id == region_id, Region.is_active == True)
         
         result = await db.execute(stmt)
         row = result.fetchone()
@@ -92,7 +91,7 @@ class RegionService:
             Region.descripcion,
             Region.metadatos,
             func.ST_AsGeoJSON(Region.geom).label("geom_json")
-        ).offset(skip).limit(limit)
+        ).where(Region.is_active == True).offset(skip).limit(limit)
         
         result = await db.execute(stmt)
         rows = result.all()
@@ -104,6 +103,33 @@ class RegionService:
             regiones.append(data)
             
         return regiones
+    
+    async def update(self, db: AsyncSession, region_id: UUID, data: RegionUpdate) -> Optional[Region]:
+        update_data = data.model_dump(exclude_unset=True)
+        
+        # Si vienen datos geométricos, los convertimos a WKT
+        if "geom" in update_data:
+            geom_shape = shape(update_data["geom"])
+            update_data["geom"] = f"SRID=4326;{geom_shape.wkt}"
+        
+        stmt = update(Region).where(Region.id == region_id).values(**update_data).returning(Region)
+        result = await db.execute(stmt)
+        await db.commit()
+        
+        updated_region = result.scalar_one_or_none()
+        if updated_region:
+            # Re-convertimos la geometría a GeoJSON para la respuesta
+            geo_json_str = await db.scalar(select(func.ST_AsGeoJSON(Region.geom)).where(Region.id == region_id))
+            updated_region.geom = json.loads(geo_json_str)
+            
+        return updated_region
+    
+
+    async def soft_delete(self, db: AsyncSession, region_id: UUID) -> bool:
+        stmt = update(Region).where(Region.id == region_id).values(is_active=False)
+        result = await db.execute(stmt)
+        await db.commit()
+        return result.rowcount > 0
 
 # Instanciamos el servicio para usarlo directamente como un Singleton en nuestras rutas
 region_service = RegionService()

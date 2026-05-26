@@ -1,6 +1,6 @@
 # app/models/region.py
 import uuid
-from sqlalchemy import String
+from sqlalchemy import String, Column, Boolean
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from geoalchemy2 import Geometry
@@ -21,3 +21,5 @@ class Region(Base):
 
     # sin ningún propósito concreto todabía
     metadatos: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+    is_active: bool = Column(Boolean, default=True, nullable=False)

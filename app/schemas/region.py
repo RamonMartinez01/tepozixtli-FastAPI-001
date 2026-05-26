@@ -26,3 +26,9 @@ class RegionResponse(RegionBase):
 
     # Esto le dice a Pydantic que lea el objeto desde un modelo de SQLAlchemy en lugar de un diccionario estándar.
     model_config = ConfigDict(from_attributes=True)
+
+class RegionUpdate(BaseModel):
+    nombre_region: Optional[str] = Field(None, max_length=150)
+    descripcion: Optional[str] = Field(None, max_length=255)
+    metadatos: Optional[Dict[str, Any]] = None
+    geom: Optional[Dict[str, Any]] = None
