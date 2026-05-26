@@ -9,9 +9,9 @@ from alembic import context
 
 # 1. Importaciones del Ecosistema
 from app.core.config import settings
-from app.db.base import Base
-# IMPORTANTE: Aquí importaremos los modelos en el futuro (ej. from app.models.user import User)
+from app.models.base import Base
 
+from app.models.region import Region
 # Configuración base de Alembic
 config = context.config
 
@@ -25,12 +25,22 @@ if config.config_file_name is not None:
 # 3. Enlazamos los metadatos de la clase Base para que Alembic detecte los cambios
 target_metadata = Base.metadata
 
+def include_object(object, name, type_, reflected, compare_to):
+    """
+    Filtro de Alembic: Le dice al autogenerador qué tablas ignorar en la base de datos.
+    Protegemos las tablas nativas de PostGIS.
+    """
+    if type_ == "table" and name == "spatial_ref_sys":
+        return False
+    return True
+
 def run_migrations_offline() -> None:
     """Ejecuta migraciones en modo 'offline' (sin conectarse a la BD)."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
+        include_object=include_object,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -39,8 +49,12 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 def do_run_migrations(connection: Connection) -> None:
-    """Función de soporte para ejecutar las migraciones en el entorno síncrono encapsulado."""
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection, 
+        target_metadata=target_metadata,
+        include_object=include_object,  # <--- Escudo para --op.drop_table('spatial_ref_sys')--
+        compare_type=True # <--- Detecta si cambiamos tipos de datos (ej. String(50) a String(100))
+    )
     with context.begin_transaction():
         context.run_migrations()
 
