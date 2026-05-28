@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+
+    # Token Interno para microservicios
+    INTERNAL_API_TOKEN: str 
     
     # Configuración de Pydantic para que lea automáticamente el archivo .env
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")

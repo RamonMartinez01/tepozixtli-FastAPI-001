@@ -10,8 +10,9 @@ from alembic import context
 # 1. Importaciones del Ecosistema
 from app.core.config import settings
 from app.models.base import Base
-
 from app.models.region import Region
+from app.models.ndvi_region_stats import NdviRegionStat
+
 # Configuración base de Alembic
 config = context.config
 
