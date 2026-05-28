@@ -53,6 +53,23 @@ class NdviRegionStatsService:
         
         result = await db.execute(stmt)
         return list(result.scalars().all())
+    
+
+    async def delete_stat(self, db: AsyncSession, stat_id: uuid.UUID) -> bool:
+        """
+        Elimina físicamente un registro de estadística por su ID.
+        Útil para limpiar datos de prueba (mocks) o revertir ingestas erróneas.
+        """
+        stmt = select(NdviRegionStat).where(NdviRegionStat.id == stat_id)
+        result = await db.execute(stmt)
+        db_stat = result.scalar_one_or_none()
+        
+        if db_stat:
+            await db.delete(db_stat)
+            await db.commit()
+            return True
+            
+        return False
 
 # Instanciamos el Singleton para importarlo limpiamente en las rutas
 ndvi_stats_service = NdviRegionStatsService()
