@@ -3,6 +3,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Dashboard Agroespacial - Copernicus"
+
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
     
     # Base de Datos
     SQLALCHEMY_DATABASE_URL: str
