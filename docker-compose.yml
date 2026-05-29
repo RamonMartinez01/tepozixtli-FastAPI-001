@@ -7,7 +7,7 @@ services:
     container_name: ojos-de-cobre_db
     restart: always
     networks:
-      - backend_network
+      - tepozixtli_backend_network
     env_file:
       - .env
     volumes:
@@ -32,7 +32,7 @@ services:
     env_file:
       - .env # Lee las variables de tu archivo local (.env)
     networks:
-      - backend_network
+      - tepozixtli_backend_network
     depends_on:
       db:
         condition: service_healthy # Espera a que la base de datos esté lista
