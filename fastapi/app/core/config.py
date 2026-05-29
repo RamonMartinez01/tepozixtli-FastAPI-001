@@ -1,5 +1,11 @@
 # app/core/config.py
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Obtenemos la ruta absoluta de la carpeta raíz del proyecto (/tepozixtli)
+# Si config.py está en /fastapi/app/core/, subimos 3 niveles para llegar a la raíz.
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+ENV_PATH = BASE_DIR / ".env"
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Dashboard Agroespacial - Copernicus"
@@ -23,6 +29,8 @@ class Settings(BaseSettings):
     INTERNAL_API_TOKEN: str 
     
     # Configuración de Pydantic para que lea automáticamente el archivo .env
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=str(ENV_PATH), 
+        env_file_encoding="utf-8")
 
 settings = Settings()

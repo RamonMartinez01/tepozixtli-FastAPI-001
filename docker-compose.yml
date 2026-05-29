@@ -6,8 +6,8 @@ services:
     image: postgis/postgis:15-3.4-alpine
     container_name: ojos-de-cobre_db
     restart: always
-    # No exponemos los 'ports' directamente al host público para proteger la integridad.
-    # Solo la API dentro de la red interna de Docker podrá verla.
+    networks:
+      - backend_network
     env_file:
       - .env
     volumes:
@@ -22,22 +22,28 @@ services:
   # 2. EL MOTOR: API FastAPI (Nuestra App)
   # ----------------------------------------------
   api:
-    build: .
-    container_name: ojos-de-cobre_api
-    restart: always
+    build:
+      context: ./fastapi  # <--- Cambiamos el contexto a la carpeta fastapi
+      dockerfile: Dockerfile
+    volumes:
+      - ./fastapi:/app    # <--- Mapeamos la carpeta correctamente
     ports:
-      - "8001:8000" # Exponemos la API al exterior para conectar con el frontend
+      - "8001:8001"
     env_file:
       - .env # Lee las variables de tu archivo local (.env)
+    networks:
+      - backend_network
     depends_on:
       db:
         condition: service_healthy # Espera a que la base de datos esté lista
-    volumes:
-      # Sincroniza el código en tiempo real para desarrollo local (Live Reload).
-      - .:/app
+    
 
 # ----------------------------------------------
-# VOLUMEN PERSISTENTE (Para no perder datos si el contenedor cae)
+# REDES Y VOLÚMENES
 # ----------------------------------------------
+networks:
+  backend_network:
+    driver: bridge
+
 volumes:
   postgres_data:
