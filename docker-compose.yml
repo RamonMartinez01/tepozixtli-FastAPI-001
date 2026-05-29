@@ -42,7 +42,7 @@ services:
 # REDES Y VOLÚMENES
 # ----------------------------------------------
 networks:
-  backend_network:
+  tepozixtli_backend_network:
     driver: bridge
 
 volumes:
