@@ -40,6 +40,23 @@ services:
     
 
 # ----------------------------------------------
+  # 3. EL INGESTOR: Microservicio en Go
+  # ----------------------------------------------
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: tepozixtli_worker
+    restart: always
+    env_file:
+      - .env  # Inyecta las variables globales directamente al entorno del contenedor
+    networks:
+      - tepozixtli_backend_network
+    depends_on:
+      db:
+        condition: service_healthy
+
+# ----------------------------------------------
 # REDES Y VOLÚMENES
 # ----------------------------------------------
 networks:
