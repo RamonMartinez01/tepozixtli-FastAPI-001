@@ -27,10 +27,18 @@ func main() {
 		log.Fatal("ERROR CRÍTICO: Credenciales de Copernicus incompletas en el .env")
 	}
 
-	fmt.Println("Configuración y credenciales base detectadas.")
+	fmt.Printf(">>> MODO DE OPERACIÓN DEL WORKER: [%s] <<<\n", cfg.WorkerMode)
 
-	// Inicializamos el sistema de autenticación
-	auth := copernicus.NewAuthenticator(cfg.CopernicusClientID, cfg.CopernicusClientSecret)
+	// Inicializamos el autenticador solo si es necesario
+	var auth *copernicus.Authenticator
+
+	if cfg.WorkerMode == "live" {
+		if cfg.CopernicusClientID == "" || cfg.CopernicusClientSecret == "" {
+			log.Fatal("ERROR CRÍTICO: Credenciales de Copernicus incompletas para modo LIVE.")
+		}
+		auth = copernicus.NewAuthenticator(cfg.CopernicusClientID, cfg.CopernicusClientSecret)
+		fmt.Println("Configuración y credenciales base detectadas.")
+	}
 
 	// Creamos un canal para interceptar las señales de terminación del Sistema Operativo
 	sigs := make(chan os.Signal, 1)
@@ -44,7 +52,7 @@ func main() {
 
 	fmt.Println("Motor del Ingestor encendido. Entrando en ciclo de ejecución continua...")
 
-	// 4. El Bucle Principal de Eventos (Event Loop)
+	// El Bucle Principal de Eventos (Event Loop)
 	for {
 		// La sentencia 'select' bloquea la ejecución hasta que uno de sus 'cases' reciba un mensaje
 		select {
@@ -52,6 +60,16 @@ func main() {
 			// --- SECCIÓN DE TRABAJO ---
 			// Este bloque se ejecutará cada vez que el Ticker envíe un pulso
 			fmt.Println("\n--- [LATIDO] Ejecutando ciclo de ingesta ---")
+
+			// BIFURCACIÓN LÓGICA SEGÚN EL MODO
+			if cfg.WorkerMode == "mock" {
+				fmt.Println("[MOCK] Generando telemetría simulada (AISLADO de CDSE)...")
+				// Aquí en el futuro enviaremos un JSON de prueba a FastAPI
+				fmt.Println("[MOCK] Ciclo de prueba local completado.")
+				continue // Termina este latido y espera al siguiente
+			}
+
+			// BLOQUE LIVE (Solo se ejecuta si WorkerMode == "live")
 			fmt.Println("Verificando/Renovando enlace con Copernicus CDSE...")
 
 			token, err := auth.GetToken()
