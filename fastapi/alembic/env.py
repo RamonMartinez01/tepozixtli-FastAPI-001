@@ -12,6 +12,7 @@ from app.core.config import settings
 from app.models.base import Base
 from app.models.region import Region
 from app.models.ndvi_region_stats import NdviRegionStat
+from app.models.municipio import Municipio
 
 # Configuración base de Alembic
 config = context.config
