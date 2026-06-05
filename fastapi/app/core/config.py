@@ -10,9 +10,9 @@ ENV_PATH = BASE_DIR / ".env"
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Dashboard Agroespacial - Copernicus"
 
-    # POSTGRES_USER: str
-    # POSTGRES_PASSWORD: str
-    # POSTGRES_DB: str
+    POSTGRES_USER: str
+    POSTGRES_PASSWORD: str
+    POSTGRES_DB: str
     
     # Base de Datos
     SQLALCHEMY_DATABASE_URL: str
@@ -28,10 +28,10 @@ class Settings(BaseSettings):
     # Token Interno para microservicios
     INTERNAL_API_TOKEN: str 
 
-    # COPERNICUS_CLIENT_ID: str
-    # COPERNICUS_CLIENT_SECRET: str
+    COPERNICUS_CLIENT_ID: str
+    COPERNICUS_CLIENT_SECRET: str
 
-    # WORKER_MODE: str
+    WORKER_MODE: str
         
     # Configuración de Pydantic para que lea automáticamente el archivo .env
     model_config = SettingsConfigDict(
