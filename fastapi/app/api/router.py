@@ -4,6 +4,7 @@ from app.api.routes import region
 from app.api.routes import ndvi_region_stats
 from app.api.routes import municipio
 from app.test_redis_route import router as test_router
+from app.api.routes import indicadores_macro
 
 # Este es el router maestro que agrupará a todos los demás
 api_router = APIRouter()
@@ -17,6 +18,9 @@ api_router.include_router(region.router, prefix="/regiones", tags=["Regiones Esp
 api_router.include_router(ndvi_region_stats.router, tags=["Internal Microservices"])
 
 api_router.include_router(municipio.router, prefix="/municipios", tags=["Municipios"])
+
+api_router.include_router(indicadores_macro.router, prefix="/indicadores-macro", tags=["Indicadores Copernicus"]
+)
 
 # test de redis
 api_router.include_router(test_router)

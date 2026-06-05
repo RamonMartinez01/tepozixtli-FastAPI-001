@@ -1,4 +1,4 @@
-# app/core/config.py
+# fastapi/app/core/config.py
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     COPERNICUS_CLIENT_SECRET: str
 
     WORKER_MODE: str
+
+    REDIS_HOST: str
+    REDIS_PORT: str
+    REDIS_PASSWORD: str
         
     # Configuración de Pydantic para que lea automáticamente el archivo .env
     model_config = SettingsConfigDict(
