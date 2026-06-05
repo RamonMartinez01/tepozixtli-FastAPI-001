@@ -39,7 +39,7 @@ services:
         condition: service_healthy # Espera a que la base de datos esté lista
     
 
-# ----------------------------------------------
+  # ----------------------------------------------
   # 3. EL INGESTOR: Microservicio en Go
   # ----------------------------------------------
   worker:
@@ -56,6 +56,22 @@ services:
       db:
         condition: service_healthy
 
+  # ----------------------------------------------
+  # 4. EL MENSAJERO: Redis
+  # ----------------------------------------------
+  redis_broker:
+    image: redis:7-alpine
+    container_name: tepozixtli_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    # Iniciamos el servidor exigiéndole la contraseña que leerá del .env
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    networks:
+      - tepozixtli_backend_network
+    volumes:
+      - redis_data:/data
+
 # ----------------------------------------------
 # REDES Y VOLÚMENES
 # ----------------------------------------------
@@ -65,3 +81,4 @@ networks:
 
 volumes:
   postgres_data:
+  redis_data:
