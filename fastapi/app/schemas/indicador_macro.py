@@ -1,3 +1,4 @@
+# tepozixtly/fastapi/app/schemas/indicador_macro.py
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Dict, Any
 from uuid import UUID
