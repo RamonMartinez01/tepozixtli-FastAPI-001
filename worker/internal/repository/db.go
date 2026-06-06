@@ -1,11 +1,11 @@
-// tepozixtli/worker/db/postgres.go
+// tepozixtli/worker/internal/repository/db.go
 package db
 
 import (
 	"database/sql"
 	"fmt"
 
-	"tepozixtli-worker/config"
+	"tepozixtli-worker/internal/config"
 
 	_ "github.com/lib/pq" // Importación anónima para el driver
 )

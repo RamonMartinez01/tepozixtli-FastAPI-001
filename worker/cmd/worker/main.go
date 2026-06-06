@@ -1,4 +1,4 @@
-// tepozixtli/worker/main.go
+// tepozixtli/worker/cmd/worker/main.go
 package main
 
 import (
@@ -14,9 +14,9 @@ import (
 	"syscall"
 	"time"
 
-	"tepozixtli-worker/config"
-	"tepozixtli-worker/copernicus"
-	"tepozixtli-worker/db"
+	"tepozixtli-worker/internal/client/copernicus"
+	"tepozixtli-worker/internal/config"
+	db "tepozixtli-worker/internal/repository"
 
 	"github.com/redis/go-redis/v9"
 )

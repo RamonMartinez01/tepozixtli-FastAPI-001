@@ -1,4 +1,4 @@
-// tepozixtli/worker/config/env.go
+// tepozixtli/worker/internal/config/loader.go
 package config
 
 import (
