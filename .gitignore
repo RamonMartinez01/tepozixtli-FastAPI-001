@@ -3,3 +3,6 @@
 # ==========================================
 
 .env
+
+# Ignore la carpeta de staging del worker
+worker/data/staging/
