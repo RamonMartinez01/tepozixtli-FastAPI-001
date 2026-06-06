@@ -1,4 +1,4 @@
-// tepozixtli/worker/copernicus/payload_factory.go
+// tepozixtli/worker/internal/client/copernicus/payload_factory.go
 package copernicus
 
 import (

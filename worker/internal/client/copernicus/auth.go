@@ -1,4 +1,4 @@
-// tepozixtli/worker/copernicus/auth.go
+// tepozixtli/worker/internal/client/copernicus/auth.go
 package copernicus
 
 import (
