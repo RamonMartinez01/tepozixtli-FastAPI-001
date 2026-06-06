@@ -10,10 +10,16 @@ import (
 
 // AppConfig almacena las variables de entorno de nuestra aplicación
 type AppConfig struct {
+	RedisHost              string
+	RedisPort              string
+	RedisPassword          string
 	InternalAPIToken       string
 	CopernicusClientID     string
 	CopernicusClientSecret string
 	WorkerMode             string
+	PostgresUser           string
+	PostgresPassword       string
+	PostgresDB             string
 }
 
 // LoadConfig lee el archivo .env y mapea las variables a la estructura AppConfig
@@ -25,10 +31,16 @@ func LoadConfig() *AppConfig {
 	}
 
 	cfg := &AppConfig{
+		RedisHost:              os.Getenv("REDIS_HOST"),
+		RedisPort:              os.Getenv("REDIS_PORT"),
+		RedisPassword:          os.Getenv("REDIS_PASSWORD"),
 		InternalAPIToken:       os.Getenv("INTERNAL_API_TOKEN"),
 		CopernicusClientID:     os.Getenv("COPERNICUS_CLIENT_ID"),
 		CopernicusClientSecret: os.Getenv("COPERNICUS_CLIENT_SECRET"),
 		WorkerMode:             os.Getenv("WORKER_MODE"),
+		PostgresUser:           os.Getenv("POSTGRES_USER"),
+		PostgresPassword:       os.Getenv("POSTGRES_PASSWORD"),
+		PostgresDB:             os.Getenv("POSTGRES_DB"),
 	}
 
 	// Sistema de seguridad: Fallback a mock si la variable está vacía
