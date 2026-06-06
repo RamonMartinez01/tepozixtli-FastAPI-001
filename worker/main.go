@@ -2,8 +2,13 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,15 +16,30 @@ import (
 
 	"tepozixtli-worker/config"
 	"tepozixtli-worker/copernicus"
+	"tepozixtli-worker/db"
+
+	"github.com/redis/go-redis/v9"
 )
+
+var ctx = context.Background()
+
+// TaskPayload es el molde exacto del JSON que FastAPI nos envía por Redis
+type TaskPayload struct {
+	Task          string `json:"task"`
+	TipoIndicador string `json:"tipo_indicador"`
+	EntidadTipo   string `json:"entidad_tipo"`
+	EntidadID     string `json:"entidad_id"`
+	FechaCaptura  string `json:"fecha_captura"`
+}
 
 func main() {
 	fmt.Println("Iniciando Ingestor Satelital (Worker en Go)...")
-
 	// Cargamos la configuración desde la raíz
 	cfg := config.LoadConfig()
 
-	// Validación de seguridad inicial
+	// =======================================================
+	// VALIDACIONES DE SEGURIDAD
+	// =======================================================
 	if cfg.InternalAPIToken == "" {
 		log.Fatal("ERROR CRÍTICO: INTERNAL_API_TOKEN no está definido. El Worker no podrá comunicarse con la API.")
 	}
@@ -29,52 +49,107 @@ func main() {
 
 	fmt.Printf(">>> MODO DE OPERACIÓN DEL WORKER: [%s] <<<\n", cfg.WorkerMode)
 
-	// Inicializamos el autenticador solo si es necesario
+	// =======================================================
+	// INICIALIZAR AUTENTICADOR
+	// =======================================================
 	var auth *copernicus.Authenticator
 
 	if cfg.WorkerMode == "live" {
-		if cfg.CopernicusClientID == "" || cfg.CopernicusClientSecret == "" {
-			log.Fatal("ERROR CRÍTICO: Credenciales de Copernicus incompletas para modo LIVE.")
-		}
 		auth = copernicus.NewAuthenticator(cfg.CopernicusClientID, cfg.CopernicusClientSecret)
 		fmt.Println("Configuración y credenciales base detectadas.")
 	}
 
-	// Creamos un canal para interceptar las señales de terminación del Sistema Operativo
+	// =======================================================
+	// CONEXIÓN A POSTGRESQL
+	// =======================================================
+	pgDB, err := db.ConnectDB(cfg)
+	if err != nil {
+		log.Fatalf("ERROR CRÍTICO: No se pudo conectar a PostgreSQL: %v", err)
+	}
+	defer pgDB.Close()
+	fmt.Println("Conexión con PostgreSQL Bóveda Central establecida.")
+
+	// =======================================================
+	// CONEXIÓN A REDIS
+	// =======================================================
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%s", cfg.RedisHost, cfg.RedisPort),
+		Password: cfg.RedisPassword,
+		DB:       0,
+	})
+	if _, err := rdb.Ping(ctx).Result(); err != nil {
+		log.Fatalf("ERROR CRÍTICO: No se pudo conectar a Redis: %v", err)
+	}
+	fmt.Println("Conexión con Redis Broker establecida.")
+
+	// =======================================================
+	// CANALES DE CONTROL Y OYENTE ASÍNCRONO
+	// =======================================================
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	// Configuración del Ticker (El "Corazón" del Daemon)
-	// Para nuestra prueba, configuramos un latido cada 15 segundos
-	ticker := time.NewTicker(15 * time.Second)
-	// Aseguramos que el ticker se limpie de la memoria al salir de la función
-	defer ticker.Stop()
+	// Este canal conectará a nuestro "oyente" de Redis con el motor principal
+	tasks := make(chan string)
 
-	fmt.Println("Motor del Ingestor encendido. Entrando en ciclo de ejecución continua...")
+	// EL OYENTE ASÍNCRONO (Goroutine)
+	// Esto corre en segundo plano y se queda bloqueado (BLPOP) hasta que llegue algo
+	go func() {
+		for {
+			result, err := rdb.BLPop(ctx, 0, "queue:copernicus_tasks").Result()
+			if err != nil {
+				log.Printf("Error leyendo de Redis: %v", err)
+				continue
+			}
+			// result[0] es el nombre de la cola, result[1] es el payload
+			tasks <- result[1] // Enviamos el mensaje al bucle principal
+		}
+	}()
 
-	// El Bucle Principal de Eventos (Event Loop)
+	fmt.Println("Motor del Ingestor encendido. Esperando tareas en la cola...")
+
+	// =======================================================
+	//  EL BUCLE PRINCIPAL DE EVENTOS
+	// =======================================================
 	for {
-		// La sentencia 'select' bloquea la ejecución hasta que uno de sus 'cases' reciba un mensaje
 		select {
-		case <-ticker.C:
-			// --- SECCIÓN DE TRABAJO ---
-			// Este bloque se ejecutará cada vez que el Ticker envíe un pulso
-			fmt.Println("\n--- [LATIDO] Ejecutando ciclo de ingesta ---")
+		case taskPayload := <-tasks:
+			// --- SECCIÓN DE TRABAJO (Cuando llega un mensaje de Redis) ---
+			fmt.Printf("\n--- [NUEVA TAREA RECIBIDA] ---\nPayload: %s\n", taskPayload)
+
+			// Paso A: Desempacar el JSON
+			var payload TaskPayload
+			if err := json.Unmarshal([]byte(taskPayload), &payload); err != nil {
+				log.Printf("Error decodificando payload JSON: %v", err)
+				continue // Ignoramos mensajes corruptos y seguimos escuchando
+			}
+
+			// Paso B: Extraer la geometría de nuestra base de datos
+			fmt.Printf("Extrayendo geometría espacial para %s [%s]...\n", payload.EntidadTipo, payload.EntidadID)
+
+			geojson, err := db.GetGeometryGeoJSON(pgDB, payload.EntidadTipo, payload.EntidadID)
+			if err != nil {
+				log.Printf("Fallo extrayendo geometría de la DB: %v", err)
+				continue
+			}
+
+			// Imprimimos solo un fragmento del GeoJSON para no inundar la consola
+			previewGeo := geojson
+			if len(geojson) > 60 {
+				previewGeo = geojson[:60] + "..."
+			}
+			fmt.Printf("ÉXITO: Geometría obtenida. (Fragmento: %s)\n", previewGeo)
 
 			// BIFURCACIÓN LÓGICA SEGÚN EL MODO
 			if cfg.WorkerMode == "mock" {
-				fmt.Println("[MOCK] Generando telemetría simulada (AISLADO de CDSE)...")
-				// Aquí en el futuro enviaremos un JSON de prueba a FastAPI
-				fmt.Println("[MOCK] Ciclo de prueba local completado.")
-				continue // Termina este latido y espera al siguiente
+				fmt.Println("[MOCK] Simulando extracción de datos (AISLADO de CDSE)...")
+				fmt.Println("[MOCK] Tarea procesada localmente con éxito.")
+				continue
 			}
 
-			// BLOQUE LIVE (Solo se ejecuta si WorkerMode == "live")
+			// BLOQUE LIVE
 			fmt.Println("Verificando/Renovando enlace con Copernicus CDSE...")
-
 			token, err := auth.GetToken()
 			if err != nil {
-				// Usamos log.Printf en lugar de log.Fatal para NO matar el daemon si la red falla un segundo
 				log.Printf("Fallo en la autenticación durante el ciclo: %v", err)
 				continue
 			}
@@ -84,18 +159,94 @@ func main() {
 				preview = token[:15]
 			}
 			fmt.Printf("Enlace activo. Token actual: %s...\n", preview)
-			fmt.Println("Esperando el próximo ciclo...")
+			fmt.Println("Listo para iniciar descarga desde Statistical API...")
+
+			// ===================================================
+			// INICIO DEL BLOQUE DE EXTRACCIÓN A COPERNICUS
+			// ===================================================
+			fmt.Println("Ensamblando Payload en la fábrica para Processing API...")
+
+			// 1. Usamos nuestra fábrica para construir el JSON exacto.
+			payloadBytes, err := copernicus.BuildProcessingPayload(geojson, payload.FechaCaptura, payload.TipoIndicador)
+			if err != nil {
+				log.Printf("ERROR: Falló la construcción del payload de procesamiento: %v\n", err)
+				continue // Usamos continue para no apagar el Worker, solo abortamos esta tarea
+			}
+
+			// 2. Apuntamos a la Processing API de Copernicus
+			processURL := "https://sh.dataspace.copernicus.eu/api/v1/process"
+			req, err := http.NewRequest("POST", processURL, bytes.NewBuffer(payloadBytes))
+			if err != nil {
+				log.Printf("ERROR: No se pudo crear la petición HTTP: %v\n", err)
+				continue
+			}
+
+			// 3. Credenciales y Contratos (Headers)
+			req.Header.Set("Authorization", "Bearer "+token)
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Accept", "image/tiff") // Fundamental: pedimos un archivo matricial/binario
+
+			// 4. Ejecución del Disparo (Con Timeout táctico)
+			fmt.Println("Disparando petición a Processing API de Copernicus... (Descargando matriz de píxeles)")
+
+			client := &http.Client{
+				Timeout: 3 * time.Minute, // Damos tiempo suficiente para el procesamiento espacial
+			}
+
+			resp, err := client.Do(req)
+			if err != nil {
+				log.Printf("ERROR: El disparo HTTP a Copernicus falló: %v\n", err)
+				continue
+			}
+
+			// 5. Análisis de la Respuesta
+			bodyBytes, err := io.ReadAll(resp.Body)
+			resp.Body.Close() // Cerramos el body aquí mismo por seguridad de memoria
+
+			if err != nil {
+				log.Printf("ERROR leyendo el cuerpo de la respuesta: %v\n", err)
+				continue
+			}
+
+			fmt.Printf("--- RECEPCIÓN DE DATOS ---\n")
+			fmt.Printf("CÓDIGO DE ESTADO HTTP: %d\n", resp.StatusCode)
+
+			// Si es 200 OK, coronamos. Si es diferente, analizamos el motivo.
+			if resp.StatusCode == 200 {
+				fmt.Println("ÉXITO: ¡Archivo TIFF (Píxeles crudos) recibido!")
+
+				// IMPORTANTE: Guardamos el archivo binario en disco
+				// Usamos el ID de la entidad y la fecha para que no se sobreescriban
+				fileName := fmt.Sprintf("raw_%s_%s_%s.tiff", payload.TipoIndicador, payload.EntidadID, payload.FechaCaptura)
+
+				err := os.WriteFile(fileName, bodyBytes, 0644)
+				if err != nil {
+					log.Printf("ERROR guardando el TIFF en disco: %v\n", err)
+				} else {
+					fmt.Printf("Archivo TIFF guardado correctamente en la raíz como: %s\n", fileName)
+					fmt.Printf("   Tamaño del archivo: %d bytes\n\n", len(bodyBytes))
+
+					// TODO: Aquí implementaremos la conversión de TIFF a ArrayBuffer/JSON
+				}
+
+			} else {
+				fmt.Println("ALERTA: Copernicus rechazó la petición.")
+				fmt.Printf("MOTIVO: %s\n\n", string(bodyBytes))
+			}
+			// ===================================================
+			// FIN DEL BLOQUE DE EXTRACCIÓN
+			// ===================================================
 
 		case sig := <-sigs:
 			// --- SECCIÓN DE APAGADO ---
-			// Este bloque se ejecuta si Docker hace 'stop' o si presionas Ctrl+C
 			fmt.Printf("\n[SISTEMA] Señal de apagado detectada: %v\n", sig)
 			fmt.Println("Iniciando secuencia de apagado elegante (Graceful Shutdown)...")
 
-			// Aquí en el futuro cerraremos conexiones y limpiaremos memoria
+			// Limpiamos la conexión a Redis antes de apagar
+			rdb.Close()
 
 			fmt.Println("Worker detenido de forma segura. Cambio y fuera.")
-			os.Exit(0) // Código 0 indica un apagado limpio y sin errores
+			os.Exit(0)
 		}
 	}
 }
