@@ -17,6 +17,8 @@ type AppConfig struct {
 	CopernicusClientID     string
 	CopernicusClientSecret string
 	WorkerMode             string
+	PostgresHost           string
+	PostgresPort           string
 	PostgresUser           string
 	PostgresPassword       string
 	PostgresDB             string
@@ -38,6 +40,8 @@ func LoadConfig() *AppConfig {
 		CopernicusClientID:     os.Getenv("COPERNICUS_CLIENT_ID"),
 		CopernicusClientSecret: os.Getenv("COPERNICUS_CLIENT_SECRET"),
 		WorkerMode:             os.Getenv("WORKER_MODE"),
+		PostgresHost:           os.Getenv("DB_HOST"),
+		PostgresPort:           os.Getenv("DB_PORT"),
 		PostgresUser:           os.Getenv("POSTGRES_USER"),
 		PostgresPassword:       os.Getenv("POSTGRES_PASSWORD"),
 		PostgresDB:             os.Getenv("POSTGRES_DB"),
