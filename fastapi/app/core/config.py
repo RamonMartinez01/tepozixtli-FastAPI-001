@@ -10,6 +10,8 @@ ENV_PATH = BASE_DIR / ".env"
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Dashboard Agroespacial - Copernicus"
 
+    DB_HOST: str
+    DB_PORT: str
     POSTGRES_USER: str
     POSTGRES_PASSWORD: str
     POSTGRES_DB: str
