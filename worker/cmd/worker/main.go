@@ -8,10 +8,12 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"tepozixtli-worker/internal/client/copernicus"
 	"tepozixtli-worker/internal/config"
+	"tepozixtli-worker/internal/processor"
 	db "tepozixtli-worker/internal/repository"
 	"tepozixtli-worker/internal/storage"
 
@@ -116,13 +118,31 @@ func main() {
 			/// 4. Persistencia
 			fileName := fmt.Sprintf("raw_%s_%s_%s.tiff", payload.TipoIndicador, payload.EntidadID, payload.FechaCaptura)
 
-			// ¡Aquí llamamos a nuestro gestor!
 			err = storage.SaveTiff(tiffData, fileName)
 			if err != nil {
 				log.Printf("ERROR guardando archivo: %v", err)
-			} else {
-				fmt.Printf("ÉXITO: Archivo guardado en /data/staging/ (%d bytes).\n", len(tiffData))
+				continue // Si falla el guardado, no podemos procesar. Saltamos al siguiente.
 			}
+
+			fmt.Printf("ÉXITO: Archivo guardado (%d bytes).\n", len(tiffData))
+
+			/// 5. El Cerebro (Procesamiento Matemático)
+			// Construimos la ruta exacta donde el storage guardó el archivo
+			// Ajusta "data/staging" si tu storage.SaveTiff lo guarda en otra ruta relativa distinta
+			fullPath := filepath.Join("data", "staging", fileName)
+
+			fmt.Println("--- Iniciando Análisis Geoespacial ---")
+			resultado, err := processor.ProcessTIFF(fullPath, payload.TipoIndicador)
+			if err != nil {
+				log.Printf("ERROR EN PROCESAMIENTO GDAL/MATEMÁTICO: %v", err)
+				continue
+			}
+
+			fmt.Printf(">>> ANÁLISIS COMPLETADO - %s <<<\n", resultado.Indicador)
+			fmt.Printf("Min: %.4f | Max: %.4f | Promedio: %.4f\n", resultado.Minimo, resultado.Maximo, resultado.Promedio)
+			fmt.Println("--------------------------------------")
+
+			// TODO: - Enviar este 'resultado' a FastAPI
 
 		case sig := <-sigs:
 			fmt.Printf("\n[SISTEMA] Apagado detectado: %v\n", sig)
