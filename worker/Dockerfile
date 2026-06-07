@@ -32,6 +32,7 @@ FROM debian:bullseye-slim
 # Usamos --fix-missing por si hay algún problema de red con el espejo de Debian.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gdal-bin \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /root/
