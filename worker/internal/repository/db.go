@@ -12,10 +12,8 @@ import (
 
 // ConnectDB inicia la conexión con la bóveda de datos
 func ConnectDB(cfg *config.AppConfig) (*sql.DB, error) {
-	// Como estamos en 'go run' local, forzamos localhost por ahora
-	host := "localhost"
-	dsn := fmt.Sprintf("host=%s port=5432 user=%s password=%s dbname=%s sslmode=disable",
-		host, cfg.PostgresUser, cfg.PostgresPassword, cfg.PostgresDB)
+	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+		cfg.PostgresHost, cfg.PostgresPort, cfg.PostgresUser, cfg.PostgresPassword, cfg.PostgresDB)
 
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
