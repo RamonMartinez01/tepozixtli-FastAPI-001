@@ -22,6 +22,11 @@ type AppConfig struct {
 	PostgresUser           string
 	PostgresPassword       string
 	PostgresDB             string
+	DOSpacesKey            string
+	DOSpacesSecret         string
+	DOSpacesEndpoint       string
+	DOSpacesRegion         string
+	DOSpacesBucket         string
 }
 
 // LoadConfig lee el archivo .env y mapea las variables a la estructura AppConfig
@@ -45,6 +50,11 @@ func LoadConfig() *AppConfig {
 		PostgresUser:           os.Getenv("POSTGRES_USER"),
 		PostgresPassword:       os.Getenv("POSTGRES_PASSWORD"),
 		PostgresDB:             os.Getenv("POSTGRES_DB"),
+		DOSpacesKey:            os.Getenv("DO_SPACES_KEY"),
+		DOSpacesSecret:         os.Getenv("DO_SPACES_SECRET"),
+		DOSpacesEndpoint:       os.Getenv("DO_SPACES_ENDPOINT"),
+		DOSpacesRegion:         os.Getenv("DO_SPACES_REGION"),
+		DOSpacesBucket:         os.Getenv("DO_SPACES_BUCKET"),
 	}
 
 	// Sistema de seguridad: Fallback a mock si la variable está vacía
