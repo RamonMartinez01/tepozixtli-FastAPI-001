@@ -126,23 +126,63 @@ func main() {
 
 			fmt.Printf("ÉXITO: Archivo guardado (%d bytes).\n", len(tiffData))
 
-			/// 5. El Cerebro (Procesamiento Matemático)
-			// Construimos la ruta exacta donde el storage guardó el archivo
-			// Ajusta "data/staging" si tu storage.SaveTiff lo guarda en otra ruta relativa distinta
+			/// 5. El Traductor (De TIFF crudo a COG)
 			fullPath := filepath.Join("data", "staging", fileName)
 
-			fmt.Println("--- Iniciando Análisis Geoespacial ---")
-			resultado, err := processor.ProcessTIFF(fullPath, payload.TipoIndicador)
+			fmt.Println("--- Iniciando Transformación a COG ---")
+
+			cogPath, err := processor.ConvertToCOG(fullPath)
 			if err != nil {
-				log.Printf("ERROR EN PROCESAMIENTO GDAL/MATEMÁTICO: %v", err)
+				log.Printf("ERROR CRÍTICO EN TRANSFORMACIÓN: %v", err)
 				continue
 			}
 
-			fmt.Printf(">>> ANÁLISIS COMPLETADO - %s <<<\n", resultado.Indicador)
-			fmt.Printf("Min: %.4f | Max: %.4f | Promedio: %.4f\n", resultado.Minimo, resultado.Maximo, resultado.Promedio)
+			fmt.Printf(">>> ARCHIVO LISTO PARA LA NUBE: %s <<<\n", cogPath)
 			fmt.Println("--------------------------------------")
 
-			// TODO: - Enviar este 'resultado' a FastAPI
+			/// 5. El Cerebro (Procesamiento Matemático)
+			// Construimos la ruta exacta donde el storage guardó el archivo
+			// Ajusta "data/staging" si tu storage.SaveTiff lo guarda en otra ruta relativa distinta
+			/*
+				fullPath := filepath.Join("data", "staging", fileName)
+
+				fmt.Println("--- Iniciando Análisis Geoespacial ---")
+				resultado, err := processor.ProcessTIFF(fullPath, payload.TipoIndicador)
+				if err != nil {
+					log.Printf("ERROR EN PROCESAMIENTO GDAL/MATEMÁTICO: %v", err)
+					continue
+				}
+
+				fmt.Printf(">>> ANÁLISIS COMPLETADO - %s <<<\n", resultado.Indicador)
+				fmt.Printf("Min: %.4f | Max: %.4f | Promedio: %.4f\n", resultado.Minimo, resultado.Maximo, resultado.Promedio)
+			*/
+
+			/// 6. El Transportista (Subida a la Nube)
+			fmt.Println("--- Iniciando Despliegue en DigitalOcean ---")
+
+			// Extraemos solo el nombre final del archivo (ej. cog_LST_...tiff)
+			cogFileName := filepath.Base(cogPath)
+
+			publicURL, err := storage.UploadCOG(ctx, cfg, cogPath, cogFileName)
+			if err != nil {
+				log.Printf("ERROR CRÍTICO EN SUBIDA S3: %v", err)
+				continue
+			}
+
+			fmt.Printf(">>> MISIÓN CUMPLIDA. URL PÚBLICA: %s <<<\n", publicURL)
+			fmt.Println("--------------------------------------")
+
+			/// 7. Higiene de Contenedores (El Recolector de Basura)
+			// Destruimos el TIFF crudo y el COG del disco local para evitar colapsar el contenedor
+			if err := os.Remove(fullPath); err != nil {
+				log.Printf("[ADVERTENCIA] No se pudo borrar archivo temporal crudo: %v", err)
+			}
+			if err := os.Remove(cogPath); err != nil {
+				log.Printf("[ADVERTENCIA] No se pudo borrar archivo temporal COG: %v", err)
+			}
+			fmt.Println("[SISTEMA] Archivos temporales eliminados del hangar local de forma segura.")
+
+			// TODO: - Enviar la URL pública resultante a FastAPI
 
 		case sig := <-sigs:
 			fmt.Printf("\n[SISTEMA] Apagado detectado: %v\n", sig)
