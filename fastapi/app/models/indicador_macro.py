@@ -3,7 +3,7 @@ import uuid
 from datetime import date
 from sqlalchemy import String, Date, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID
 from app.models.base import Base
 
 class IndicadorMacro(Base):
@@ -24,8 +24,8 @@ class IndicadorMacro(Base):
     # De cuándo es la imagen del satélite
     fecha_captura: Mapped[date] = mapped_column(Date, nullable=False, index=True)
     
-    # El tesoro: Aquí guardaremos la cuadrícula de datos procesada por Go
-    datos_vectoriales: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    # El tesoro: La ubicación exacta del mapa optimizado en la nube
+    cog_url: Mapped[str] = mapped_column(String(500), nullable=False)
 
     # Restricción: No podemos tener el mismo indicador, para la misma entidad, en la misma fecha
     __table_args__ = (
