@@ -17,6 +17,8 @@ import (
 	db "tepozixtli-worker/internal/repository"
 	"tepozixtli-worker/internal/storage"
 
+	"tepozixtli-worker/internal/notifier"
+
 	"github.com/redis/go-redis/v9"
 )
 
@@ -182,7 +184,24 @@ func main() {
 			}
 			fmt.Println("[SISTEMA] Archivos temporales eliminados del hangar local de forma segura.")
 
-			// TODO: - Enviar la URL pública resultante a FastAPI
+			/// 8. El Handshake Final (Webhook a FastAPI)
+			fmt.Println("--- Enviando Notificación a FastAPI ---")
+
+			webhookData := notifier.WebhookPayload{
+				TipoIndicador: payload.TipoIndicador,
+				EntidadTipo:   payload.EntidadTipo,
+				EntidadID:     payload.EntidadID,
+				FechaCaptura:  payload.FechaCaptura,
+				CogURL:        publicURL,
+			}
+
+			if err := notifier.SendCOGReadyNotification(cfg, webhookData); err != nil {
+				log.Printf("ERROR CRÍTICO EN WEBHOOK: %v", err)
+				continue
+			}
+
+			fmt.Println(">>> CICLO DE VIDA DE LA TAREA: 100% COMPLETADO <<<")
+			fmt.Println("--------------------------------------")
 
 		case sig := <-sigs:
 			fmt.Printf("\n[SISTEMA] Apagado detectado: %v\n", sig)
