@@ -11,6 +11,9 @@ class IndicadorMacroCreate(BaseModel):
     fecha_captura: date = Field(..., description="Fecha de la captura satelital")
     cog_url: str = Field(..., description="URL pública del archivo Cloud Optimized GeoTIFF")
 
+    # Blindaje contra campos extra en el JSON entrante
+    model_config = ConfigDict(extra='ignore')
+
 # Esquema de Respuesta: Lo que FastAPI le entregará a React
 class IndicadorMacroResponse(BaseModel):
     id: UUID

@@ -1,10 +1,14 @@
-from fastapi import APIRouter, Depends, Query, Path
+from fastapi import APIRouter, Depends, Query, Path, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from datetime import date
 from uuid import UUID
+import uuid
 
 from app.api.deps import get_db 
 from app.services.indicador_macro_service import obtener_o_encolar_indicador
+from app.models.indicador_macro import IndicadorMacro
+from app.schemas.indicador_macro import IndicadorMacroCreate, IndicadorMacroResponse
 
 router = APIRouter()
 
@@ -33,3 +37,35 @@ async def obtener_indicador(
     )
     
     return resultado
+
+
+@router.post("/webhook/indicador-macro", response_model=IndicadorMacroResponse, status_code=status.HTTP_201_CREATED)
+def webhook_recepcion_cog(
+    payload: IndicadorMacroCreate,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Webhook interno: Recibe la confirmación del Worker en Go con la URL del COG.
+    """
+    nuevo_indicador = IndicadorMacro(
+        id=uuid.uuid4(),
+        tipo_indicador=payload.tipo_indicador,
+        entidad_tipo=payload.entidad_tipo,
+        entidad_id=payload.entidad_id,
+        fecha_captura=payload.fecha_captura,
+        cog_url=payload.cog_url
+    )
+
+    try:
+        db.add(nuevo_indicador)
+        db.commit()
+        db.refresh(nuevo_indicador)
+        return nuevo_indicador
+        
+    except IntegrityError:
+        # Esto atrapa nuestra UniqueConstraint si Go intenta subir el mismo mapa dos veces
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El mapa para este indicador, entidad y fecha ya está registrado."
+        )
