@@ -1,8 +1,10 @@
 # fastapi/app/services/indicador_macro_service.py
 import redis
-from sqlalchemy import select
+from sqlalchemy.orm import Session
+from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date
+from typing import List, Optional
 from uuid import UUID
 from app.core.config import settings
 
@@ -63,3 +65,22 @@ async def obtener_o_encolar_indicador(
         "source": "redis_queue", 
         "message": "Datos no encontrados en caché. Tarea de extracción encolada para el Worker."
     }
+
+# --- Historial para el Frontend (Asíncrona y SQLAlchemy 2.0) ---
+async def obtener_ultimos_registros(
+    db: AsyncSession, 
+    entidad_id: UUID, 
+    tipo_indicador: str, 
+    limite: int = 5
+) -> List[IndicadorMacro]:
+    """
+    Recupera el historial de los últimos N mapas ordenados descendentemente por fecha.
+    """
+    query = select(IndicadorMacro).where(
+        IndicadorMacro.entidad_id == entidad_id,
+        IndicadorMacro.tipo_indicador == tipo_indicador
+    ).order_by(desc(IndicadorMacro.fecha_captura)).limit(limite)
+    
+    result = await db.execute(query)
+    # .all() devuelve una lista de los objetos
+    return result.scalars().all()
