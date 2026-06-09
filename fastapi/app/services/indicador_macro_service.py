@@ -21,16 +21,18 @@ redis_client = redis.Redis(
     retry_on_timeout=True
 )
 
-# Convertimos la función en asíncrona (async def) y usamos AsyncSession
-async def obtener_o_encolar_indicador(
+# --- Función Para el cliente: Solo Lectura (Read-Only) ---
+async def obtener_indicador_por_fecha(
     db: AsyncSession, 
     tipo_indicador: str, 
     entidad_tipo: str, 
     entidad_id: UUID, 
     fecha_captura: date
-) -> dict:
-    
-    # 2. Buscar en la Base de Datos (Estilo SQLAlchemy 2.0 Asíncrono)
+) -> Optional[IndicadorMacro]:
+    """
+    Busca un mapa específico en la base de datos.
+    Ya NO interactúa con Redis ni Copernicus para evitar abusos desde el frontend.
+    """
     query = select(IndicadorMacro).where(
         IndicadorMacro.tipo_indicador == tipo_indicador,
         IndicadorMacro.entidad_tipo == entidad_tipo,
@@ -38,33 +40,9 @@ async def obtener_o_encolar_indicador(
         IndicadorMacro.fecha_captura == fecha_captura
     )
     result = await db.execute(query)
-    registro_existente = result.scalars().first()
-
-    if registro_existente:
-        return {
-            "status": "success", 
-            "source": "database", 
-            "data": registro_existente
-        }
-
-    # 3. Miss en caché: Armamos el mensaje
-    payload = RedisTaskPayload(
-        task="fetch_copernicus_data",
-        tipo_indicador=tipo_indicador,
-        entidad_tipo=entidad_tipo,
-        entidad_id=str(entidad_id),
-        fecha_captura=fecha_captura.isoformat()
-    )
-
-    # 4. Encolar en Redis
-    queue_name = "queue:copernicus_tasks"
-    redis_client.rpush(queue_name, payload.model_dump_json())
-
-    return {
-        "status": "processing", 
-        "source": "redis_queue", 
-        "message": "Datos no encontrados en caché. Tarea de extracción encolada para el Worker."
-    }
+    
+    # Devuelve el registro si existe, o None si no hay datos
+    return result.scalars().first()
 
 # --- Historial para el Frontend (Asíncrona y SQLAlchemy 2.0) ---
 async def obtener_ultimos_registros(

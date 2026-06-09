@@ -8,7 +8,7 @@ from uuid import UUID
 import uuid
 
 from app.api.deps import get_db 
-from app.services.indicador_macro_service import obtener_o_encolar_indicador, obtener_ultimos_registros, encolar_cosecha_masiva, auditar_indicadores
+from app.services.indicador_macro_service import obtener_indicador_por_fecha, obtener_ultimos_registros, encolar_cosecha_masiva, auditar_indicadores
 from app.models.indicador_macro import IndicadorMacro
 from app.schemas.indicador_macro import IndicadorMacroCreate, IndicadorMacroResponse, CosechaMasivaRequest
 
@@ -114,13 +114,10 @@ async def webhook_recepcion_cog(
         )
     
 
-
-
-
 # ====================================================
-# Endpoint Dual: Historial o Búsqueda Específica con Redis
+# Endpoint de Lectura (Frontend React)
 # ====================================================
-@router.get("/{entidad_tipo}/{entidad_id}", summary="Obtener historial o procesar indicador macro")
+@router.get("/{entidad_tipo}/{entidad_id}", summary="Obtener historial o mapa específico")
 async def obtener_indicador(
     entidad_tipo: str = Path(..., description="Ej. 'municipio' o 'region'"),
     entidad_id: UUID = Path(..., description="El UUID de la entidad"),
@@ -129,9 +126,9 @@ async def obtener_indicador(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Punto de acceso para React:
+    Punto de acceso de Solo Lectura para React:
     - Si NO hay fecha: Retorna el historial de los últimos 5 mapas.
-    - Si HAY fecha: Busca el mapa exacto o encola la tarea a Go si no existe.
+    - Si HAY fecha: Busca el mapa exacto en la base de datos (Retorna 404 si no existe).
     """
     
     # Escenario A: Búsqueda histórica (El usuario no seleccionó fecha en el calendario)
@@ -147,11 +144,10 @@ async def obtener_indicador(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="No existen registros de mapas para esta entidad."
             )
-        # Retornamos la lista bajo la misma estructura para que React no se confunda
         return {"status": "success", "source": "database", "data": historial}
 
-    # Escenario B: Búsqueda por fecha exacta (Con activación del Worker si hay fallo)
-    resultado = await obtener_o_encolar_indicador(
+    # Escenario B: Búsqueda por fecha exacta (Estrictamente de lectura)
+    registro_existente = await obtener_indicador_por_fecha(
         db=db,
         tipo_indicador=tipo_indicador,
         entidad_tipo=entidad_tipo,
@@ -159,5 +155,16 @@ async def obtener_indicador(
         fecha_captura=fecha_captura
     )
     
-    return resultado
+    # Si el dato no está cosechado, bloqueamos cortésmente
+    if not registro_existente:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Datos no disponibles para {tipo_indicador} en la fecha solicitada. Intente consultar otra fecha disponible en el historial."
+        )
+    
+    return {
+        "status": "success", 
+        "source": "database", 
+        "data": registro_existente
+    }
 
