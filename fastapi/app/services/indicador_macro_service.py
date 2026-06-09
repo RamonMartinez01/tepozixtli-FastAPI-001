@@ -145,3 +145,42 @@ async def encolar_cosecha_masiva(
             "mapas_ya_existentes": registros_existentes
         }
     }
+
+async def auditar_indicadores(
+    db: AsyncSession,
+    entidad_tipo: Optional[str] = None,
+    entidad_id: Optional[UUID] = None,
+    tipo_indicador: Optional[str] = None,
+    fecha_inicio: Optional[date] = None,
+    fecha_fin: Optional[date] = None
+) -> List[IndicadorMacro]:
+    """
+    Construye una consulta dinámica para auditar la tabla de indicadores.
+    Solo aplica los filtros que reciben un valor.
+    """
+    # 1. Iniciamos la consulta base
+    query = select(IndicadorMacro)
+    
+    # 2. Ensamblaje dinámico de filtros
+    if entidad_tipo:
+        query = query.where(IndicadorMacro.entidad_tipo == entidad_tipo)
+    
+    if entidad_id:
+        query = query.where(IndicadorMacro.entidad_id == entidad_id)
+        
+    if tipo_indicador:
+        query = query.where(IndicadorMacro.tipo_indicador == tipo_indicador)
+        
+    if fecha_inicio:
+        query = query.where(IndicadorMacro.fecha_captura >= fecha_inicio)
+        
+    if fecha_fin:
+        query = query.where(IndicadorMacro.fecha_captura <= fecha_fin)
+        
+    # 3. Ordenamos siempre del más reciente al más antiguo
+    query = query.order_by(desc(IndicadorMacro.fecha_captura))
+    
+    # 4. Ejecutamos el disparo a la base de datos
+    result = await db.execute(query)
+    
+    return result.scalars().all()
