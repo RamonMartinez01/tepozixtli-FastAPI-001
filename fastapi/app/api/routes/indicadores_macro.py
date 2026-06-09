@@ -8,9 +8,9 @@ from uuid import UUID
 import uuid
 
 from app.api.deps import get_db 
-from app.services.indicador_macro_service import obtener_o_encolar_indicador
+from app.services.indicador_macro_service import obtener_o_encolar_indicador, obtener_ultimos_registros, encolar_cosecha_masiva
 from app.models.indicador_macro import IndicadorMacro
-from app.schemas.indicador_macro import IndicadorMacroCreate, IndicadorMacroResponse
+from app.schemas.indicador_macro import IndicadorMacroCreate, IndicadorMacroResponse, CosechaMasivaRequest
 
 router = APIRouter()
 
@@ -92,3 +92,25 @@ async def webhook_recepcion_cog(
             status_code=status.HTTP_409_CONFLICT,
             detail="El mapa para este indicador, entidad y fecha ya está registrado."
         )
+    
+# ====================================================
+# El Cosechador: Ingesta Histórica Masiva
+# ====================================================
+@router.post("/cosecha-masiva", status_code=status.HTTP_202_ACCEPTED, summary="Desencadenar cosecha histórica")
+async def iniciar_cosecha_historica(
+    solicitud: CosechaMasivaRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Recibe un rango de fechas, verifica huecos en la base de datos 
+    y lanza una ráfaga de descargas en segundo plano hacia Copernicus.
+    """
+    resultado = await encolar_cosecha_masiva(db, solicitud)
+    
+    if resultado["status"] == "error":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=resultado["message"]
+        )
+        
+    return resultado

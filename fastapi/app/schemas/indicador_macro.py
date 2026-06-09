@@ -33,3 +33,10 @@ class RedisTaskPayload(BaseModel):
     entidad_tipo: str = Field(..., description="Ej. 'municipio' o 'region'")
     entidad_id: str = Field(..., description="ID de la entidad (UUID en formato string)")
     fecha_captura: str = Field(..., description="Fecha solicitada en formato YYYY-MM-DD")
+
+class CosechaMasivaRequest(BaseModel):
+    entidad_tipo: str = Field(..., description="Ej. 'municipio' o 'region'")
+    entidad_id: UUID
+    tipo_indicador: str = Field(..., description="Ej. 'LST' o 'NDVI'")
+    fecha_inicio: date
+    fecha_fin: date

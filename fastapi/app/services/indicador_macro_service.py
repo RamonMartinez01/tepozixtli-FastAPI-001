@@ -3,13 +3,13 @@ import redis
 from sqlalchemy.orm import Session
 from sqlalchemy import select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import date
+from datetime import date, timedelta
 from typing import List, Optional
 from uuid import UUID
 from app.core.config import settings
 
 from app.models.indicador_macro import IndicadorMacro
-from app.schemas.indicador_macro import RedisTaskPayload
+from app.schemas.indicador_macro import RedisTaskPayload, CosechaMasivaRequest
 
 # 1. Conexión al Broker
 redis_client = redis.Redis(
@@ -84,3 +84,64 @@ async def obtener_ultimos_registros(
     result = await db.execute(query)
     # .all() devuelve una lista de los objetos
     return result.scalars().all()
+
+async def encolar_cosecha_masiva(
+    db: AsyncSession,
+    solicitud: CosechaMasivaRequest
+) -> dict:
+    """
+    Desglosa un rango de fechas y lanza una ráfaga de tareas a Redis 
+    solo para los mapas que aún no existen en la base de datos.
+    """
+    # Calcular el número total de días a procesar
+    delta = solicitud.fecha_fin - solicitud.fecha_inicio
+    dias_totales = delta.days + 1
+    
+    if dias_totales <= 0:
+        return {"status": "error", "message": "La fecha de fin debe ser mayor o igual a la de inicio."}
+    
+    # Freno de seguridad para no saturar la API de Copernicus en un solo click
+    if dias_totales > 365: 
+        return {"status": "error", "message": "El rango no puede exceder 1 año (365 días) por petición."}
+
+    tareas_encoladas = 0
+    registros_existentes = 0
+
+    for i in range(dias_totales):
+        fecha_actual = solicitud.fecha_inicio + timedelta(days=i)
+        
+        # 1. Verificar si el mapa ya existe en nuestra bóveda
+        query = select(IndicadorMacro).where(
+            IndicadorMacro.tipo_indicador == solicitud.tipo_indicador,
+            IndicadorMacro.entidad_tipo == solicitud.entidad_tipo,
+            IndicadorMacro.entidad_id == solicitud.entidad_id,
+            IndicadorMacro.fecha_captura == fecha_actual
+        )
+        result = await db.execute(query)
+        
+        if result.scalars().first():
+            registros_existentes += 1
+            continue  # Saltamos al siguiente día, este ya lo tenemos
+
+        # 2. Si no existe, armamos el misil para la cola de Redis
+        payload = RedisTaskPayload(
+            task="fetch_copernicus_data",
+            tipo_indicador=solicitud.tipo_indicador,
+            entidad_tipo=solicitud.entidad_tipo,
+            entidad_id=str(solicitud.entidad_id),
+            fecha_captura=fecha_actual.isoformat()
+        )
+        
+        queue_name = "queue:copernicus_tasks"
+        redis_client.rpush(queue_name, payload.model_dump_json())
+        tareas_encoladas += 1
+
+    return {
+        "status": "success",
+        "resumen": {
+            "rango_solicitado": f"{solicitud.fecha_inicio} a {solicitud.fecha_fin}",
+            "dias_totales": dias_totales,
+            "tareas_enviadas_al_worker": tareas_encoladas,
+            "mapas_ya_existentes": registros_existentes
+        }
+    }
