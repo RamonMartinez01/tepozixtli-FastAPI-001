@@ -162,3 +162,28 @@ async def auditar_indicadores(
     result = await db.execute(query)
     
     return result.scalars().all()
+
+
+# --- Función para Gráficos: Serie de Tiempo Estricta ---
+async def obtener_serie_tiempo(
+    db: AsyncSession, 
+    entidad_tipo: str,
+    entidad_id: UUID, 
+    tipo_indicador: str, 
+    fecha_inicio: date,
+    fecha_fin: date
+) -> List[IndicadorMacro]:
+    """
+    Recupera una serie de datos en un rango exacto.
+    Ordenado cronológicamente (ascendente) para alimentar gráficos en el frontend.
+    """
+    query = select(IndicadorMacro).where(
+        IndicadorMacro.entidad_tipo == entidad_tipo,
+        IndicadorMacro.entidad_id == entidad_id,
+        IndicadorMacro.tipo_indicador == tipo_indicador,
+        IndicadorMacro.fecha_captura >= fecha_inicio,
+        IndicadorMacro.fecha_captura <= fecha_fin
+    ).order_by(IndicadorMacro.fecha_captura) # Ascendente por defecto
+    
+    result = await db.execute(query)
+    return result.scalars().all()

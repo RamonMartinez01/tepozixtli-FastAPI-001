@@ -8,7 +8,13 @@ from uuid import UUID
 import uuid
 
 from app.api.deps import get_db 
-from app.services.indicador_macro_service import obtener_indicador_por_fecha, obtener_ultimos_registros, encolar_cosecha_masiva, auditar_indicadores
+from app.services.indicador_macro_service import( 
+    obtener_indicador_por_fecha, 
+    obtener_ultimos_registros, 
+    encolar_cosecha_masiva, 
+    auditar_indicadores, 
+    obtener_serie_tiempo
+)
 from app.models.indicador_macro import IndicadorMacro
 from app.schemas.indicador_macro import IndicadorMacroCreate, IndicadorMacroResponse, CosechaMasivaRequest
 
@@ -113,6 +119,47 @@ async def webhook_recepcion_cog(
             detail="El mapa para este indicador, entidad y fecha ya está registrado."
         )
     
+
+# ====================================================
+# Endpoint de Series de Tiempo (Para Gráficos en React)
+# ====================================================
+@router.get("/{entidad_tipo}/{entidad_id}/serie-tiempo", summary="Obtener serie cronológica para gráficos")
+async def obtener_serie_tiempo_indicador(
+    entidad_tipo: str = Path(..., description="Ej. 'municipio' o 'region'"),
+    entidad_id: UUID = Path(..., description="El UUID de la entidad"),
+    tipo_indicador: str = Query(..., description="Ej. 'LST' o 'NDVI'"),
+    fecha_inicio: date = Query(..., description="Fecha inicio (YYYY-MM-DD)"),
+    fecha_fin: date = Query(..., description="Fecha límite (YYYY-MM-DD)"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Punto de acceso especializado para componentes visuales.
+    Siempre retorna un Array (lista). Si no hay datos en el rango, retorna un Array vacío [], 
+    evitando que los métodos .map() de React colapsen.
+    """
+    # Freno de seguridad lógico
+    if fecha_inicio > fecha_fin:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La fecha de inicio no puede ser posterior a la fecha de fin."
+        )
+
+    registros = await obtener_serie_tiempo(
+        db=db,
+        entidad_tipo=entidad_tipo,
+        entidad_id=entidad_id,
+        tipo_indicador=tipo_indicador,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin
+    )
+
+    return {
+        "status": "success",
+        "source": "database",
+        "total_registros": len(registros),
+        "data": registros
+    }
+
 
 # ====================================================
 # Endpoint de Lectura (Frontend React)
