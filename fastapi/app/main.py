@@ -1,5 +1,6 @@
 # tepozixtli/fastapi/app/main.py
 from fastapi import FastAPI
+from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 
@@ -13,8 +14,7 @@ app = FastAPI(
 # CORS
 # ============================================================
 origins = [
-    "http://localhost:5173",  # Puerto de Vite + React
-    "http://localhost:3000",  # Por si necesitamos otro
+    settings.FRONTEND_URL
 ]
 
 # 3. Añadimos el middleware a la aplicación
