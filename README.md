@@ -14,7 +14,7 @@ Hñäki-app is a platform designed to democratize access to geospatial intellige
 At the core of this repository is a microservices-oriented architecture designed with a strict separation of concerns: a synchronous flow for public consumption, and a protected asynchronous flow for heavy telemetry ingestion.
 
 
-(![Tepozixtli Architecture Diagram]())
+(![Tepozixtli Architecture Diagram](./docs/Diagram-app.png))
 
 ### Flow 1: Public Consumption (Synchronous & Lightweight)
 End-user interactions via the client application (Hñäki-app) are completely isolated from the computational cost of the Copernicus API.
