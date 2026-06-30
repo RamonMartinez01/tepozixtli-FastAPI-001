@@ -6,20 +6,9 @@ import json
 
 from app.api.deps import get_db
 from app.services.municipio_service import municipio_service
-from app.schemas.municipio import MunicipioCreate, MunicipioResponse, MunicipioFeatureCollection
+from app.schemas.municipio import MunicipioResponse
 
 router = APIRouter()
-
-# ==============
-# crea un único registro de municipio
-# POST /api/v1/municipios
-# ==============
-@router.post("/", response_model=MunicipioResponse, status_code=status.HTTP_201_CREATED)
-async def create_municipio(
-    municipio_in: MunicipioCreate, 
-    db: AsyncSession = Depends(get_db)
-):
-    return await municipio_service.create(db, municipio_in)
 
 
 # ==============
@@ -36,9 +25,9 @@ async def upload_geojson(
     data = json.loads(content)
     
     # Validamos el esquema contra nuestro contrato Pydantic
-    feature_collection = MunicipioFeatureCollection.model_validate(data)
+    # feature_collection = MunicipioFeatureCollection.model_validate(data)
     
-    return await municipio_service.bulk_insert_geojson(db, feature_collection)
+    return await municipio_service.bulk_insert_geojson(db)
 
 
 # ==============
