@@ -14,6 +14,7 @@ from app.models.region import Region
 from app.models.ndvi_region_stats import NdviRegionStat
 from app.models.municipio import Municipio
 from app.models.indicador_macro import IndicadorMacro
+from app.models.entidad import EntidadFederativa
 
 # Configuración base de Alembic
 config = context.config
