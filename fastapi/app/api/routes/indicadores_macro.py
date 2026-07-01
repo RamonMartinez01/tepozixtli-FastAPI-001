@@ -28,7 +28,7 @@ router = APIRouter()
 @router.get("/admin/auditoria", summary="Auditoría dinámica de registros históricos")
 async def auditar_registros_macro(
     entidad_tipo: Optional[str] = Query(None, description="Filtrar por tipo de entidad (ej. municipio)"),
-    entidad_id: Optional[UUID] = Query(None, description="Filtrar por UUID de la entidad"),
+    entidad_id: Optional[str] = Query(None, description="Filtrar por clave (cvegeo o cve_ent)"),
     tipo_indicador: Optional[str] = Query(None, description="Filtrar por indicador (ej. LST, NDVI)"),
     fecha_inicio: Optional[date] = Query(None, description="Fecha de inicio (YYYY-MM-DD)"),
     fecha_fin: Optional[date] = Query(None, description="Fecha límite (YYYY-MM-DD)"),
@@ -126,7 +126,7 @@ async def webhook_recepcion_cog(
 @router.get("/{entidad_tipo}/{entidad_id}/serie-tiempo", summary="Obtener serie cronológica para gráficos")
 async def obtener_serie_tiempo_indicador(
     entidad_tipo: str = Path(..., description="Ej. 'municipio' o 'region'"),
-    entidad_id: UUID = Path(..., description="El UUID de la entidad"),
+    entidad_id: str = Path(..., description="La clave de la entidad (cvegeo/cve_ent)"),
     tipo_indicador: str = Query(..., description="Ej. 'LST' o 'NDVI'"),
     fecha_inicio: date = Query(..., description="Fecha inicio (YYYY-MM-DD)"),
     fecha_fin: date = Query(..., description="Fecha límite (YYYY-MM-DD)"),
@@ -167,7 +167,7 @@ async def obtener_serie_tiempo_indicador(
 @router.get("/{entidad_tipo}/{entidad_id}", summary="Obtener historial o mapa específico")
 async def obtener_indicador(
     entidad_tipo: str = Path(..., description="Ej. 'municipio' o 'region'"),
-    entidad_id: UUID = Path(..., description="El UUID de la entidad"),
+    entidad_id: str = Path(..., description="La clave de la entidad (cvegeo/cve_ent)"),
     tipo_indicador: str = Query(..., description="Ej. 'LST' o 'NDVI'"),
     fecha_captura: Optional[date] = Query(None, description="Si se omite, devuelve los últimos 5 registros."),
     db: AsyncSession = Depends(get_db)

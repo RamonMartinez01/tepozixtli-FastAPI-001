@@ -7,7 +7,7 @@ from datetime import date
 class IndicadorMacroCreate(BaseModel):
     tipo_indicador: str = Field(..., description="Ej. 'LST' o 'NDVI'")
     entidad_tipo: str = Field(..., description="Ej. 'municipio' o 'region'")
-    entidad_id: UUID = Field(..., description="ID de la entidad en la base de datos")
+    entidad_id: str = Field(..., description="Clave geoestadística (cvegeo o cve_ent)")
     fecha_captura: date = Field(..., description="Fecha de la captura satelital")
     cog_url: str = Field(..., description="URL pública del archivo Cloud Optimized GeoTIFF")
 
@@ -19,7 +19,7 @@ class IndicadorMacroResponse(BaseModel):
     id: UUID
     tipo_indicador: str
     entidad_tipo: str
-    entidad_id: UUID
+    entidad_id: str
     fecha_captura: date
     cog_url: str  
 
@@ -36,7 +36,7 @@ class RedisTaskPayload(BaseModel):
 
 class CosechaMasivaRequest(BaseModel):
     entidad_tipo: str = Field(..., description="Ej. 'municipio' o 'region'")
-    entidad_id: UUID
+    entidad_id: str = Field(..., description="Clave geoestadística (cvegeo o cve_ent)")
     tipo_indicador: str = Field(..., description="Ej. 'LST' o 'NDVI'")
     fecha_inicio: date
     fecha_fin: date
