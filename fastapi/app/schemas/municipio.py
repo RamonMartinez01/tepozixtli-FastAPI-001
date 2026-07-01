@@ -14,9 +14,12 @@ class MunicipioBase(BaseModel):
     # cov: Optional[float] = None
     # cov_id: Optional[float] = None
 
-class MunicipioResponse(MunicipioBase):
-    gid: int 
-    geom: Dict[str, Any] # Devolverá la geometría como GeoJSON al frontend
-
+class MunicipioListResponse(MunicipioBase):
+    gid: int
+    
     model_config = ConfigDict(from_attributes=True)
+
+
+class MunicipioDetailResponse(MunicipioListResponse):
+    geom: Dict[str, Any]
 
