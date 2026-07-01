@@ -18,8 +18,8 @@ class IndicadorMacro(Base):
     # Si pertenece a un municipio o región (Ej. "municipio")
     entidad_tipo: Mapped[str] = mapped_column(String(50), nullable=False)
     
-    # El ID real del municipio o región (Lo usamos como índice para búsquedas ultra rápidas)
-    entidad_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    # Ahora es STRING para alojar el cvegeo (5) o cve_ent (2)
+    entidad_id: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
     
     # De cuándo es la imagen del satélite
     fecha_captura: Mapped[date] = mapped_column(Date, nullable=False, index=True)

@@ -26,7 +26,7 @@ async def obtener_indicador_por_fecha(
     db: AsyncSession, 
     tipo_indicador: str, 
     entidad_tipo: str, 
-    entidad_id: UUID, 
+    entidad_id: str, 
     fecha_captura: date
 ) -> Optional[IndicadorMacro]:
     """
@@ -47,7 +47,7 @@ async def obtener_indicador_por_fecha(
 # --- Historial para el Frontend (Asíncrona y SQLAlchemy 2.0) ---
 async def obtener_ultimos_registros(
     db: AsyncSession, 
-    entidad_id: UUID, 
+    entidad_id: str, 
     tipo_indicador: str, 
     limite: int = 5
 ) -> List[IndicadorMacro]:
@@ -101,12 +101,12 @@ async def encolar_cosecha_masiva(
             registros_existentes += 1
             continue  # Saltamos al siguiente día, este ya lo tenemos
 
-        # 2. Si no existe, armamos el misil para la cola de Redis
+        # 2. Si no existe, armamos la carga para la cola de Redis
         payload = RedisTaskPayload(
             task="fetch_copernicus_data",
             tipo_indicador=solicitud.tipo_indicador,
             entidad_tipo=solicitud.entidad_tipo,
-            entidad_id=str(solicitud.entidad_id),
+            entidad_id=solicitud.entidad_id,
             fecha_captura=fecha_actual.isoformat()
         )
         
@@ -127,7 +127,7 @@ async def encolar_cosecha_masiva(
 async def auditar_indicadores(
     db: AsyncSession,
     entidad_tipo: Optional[str] = None,
-    entidad_id: Optional[UUID] = None,
+    entidad_id: Optional[str] = None,
     tipo_indicador: Optional[str] = None,
     fecha_inicio: Optional[date] = None,
     fecha_fin: Optional[date] = None
@@ -168,7 +168,7 @@ async def auditar_indicadores(
 async def obtener_serie_tiempo(
     db: AsyncSession, 
     entidad_tipo: str,
-    entidad_id: UUID, 
+    entidad_id: str, 
     tipo_indicador: str, 
     fecha_inicio: date,
     fecha_fin: date
